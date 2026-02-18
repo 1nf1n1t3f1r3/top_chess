@@ -10,7 +10,8 @@
 # Repeat with other Pieces until done (Knight, Bishop ... Pawn, probably)
 ## Add Illegal Move Checker
 # Add Turn Order
-# Initialize Game (Proper Starting Position)
+#
+# Make sure to check when two pieces can move to the same position
 
 class Game
   # Handle Turn Order
@@ -51,6 +52,9 @@ class Board
     @grid[7][6] = Knight.new(:black)
     @grid[7][7] = Rook.new(:black)
     (0..7).each { |col| @grid[6][col] = Pawn.new(:black) }
+  end
+
+  def move_pieces
   end
 
   # NOTE: This Display doesn't actually print the 'board'. It creates a board-like structure, using data from the @grid
@@ -126,8 +130,32 @@ class Knight
   def to_s
     @color == :white ? '♞' : '♘'
   end
+
   # 'Jumping' Movement: Can move over other pieces
-  # 8 Options, no further requirements
+  def possible_moves(board, row, col)
+    moves = []
+
+    # All 8 possible "L" moves
+    deltas = [
+      [2, 1], [1, 2], [-1, 2], [-2, 1],
+      [-2, -1], [-1, -2], [1, -2], [2, -1]
+    ]
+
+    # Deltas + Start Pos
+    deltas.each do |dr, dc|
+      r = row + dr
+      c = col + dc
+
+      # Only include moves inside the board
+      next unless r.between?(0, 7) && c.between?(0, 7)
+
+      # Check if empty square or enemy piece
+      target = board.grid[r][c]
+      moves << [r, c] if target.nil? || target.color != color
+    end
+
+    moves
+  end
 end
 
 class Bishop
@@ -201,3 +229,6 @@ end
 
 board = Board.new
 board.display
+knight = board.grid[0][1]
+moves = knight.possible_moves(board, 0, 1)
+puts "Knight at b1 can move to: #{moves.map { |r, c| [r, c] }}"
