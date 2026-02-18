@@ -238,6 +238,33 @@ class Pawn
     ''
   end
 
+  def possible_moves(board, row, col)
+    moves = []
+    direction = color == :white ? 1 : -1
+
+    # 1 Forward: Take Position + Intended destination and add it if it's available
+    one_step = row + direction
+    if one_step.between?(0, 7) && board.grid[one_step][col].nil?
+      moves << [one_step, col]
+
+      # ---- 2. Forward Two (if not moved yet) ----
+      two_step = row + (2 * direction)
+      moves << [two_step, col] if !moved && board.grid[two_step][col].nil?
+    end
+
+    # 3 Diagonal Captures
+    [-1, 1].each do |dc|
+      r = row + direction
+      c = col + dc
+      next unless r.between?(0, 7) && c.between?(0, 7)
+
+      target = board.grid[r][c]
+      moves << [r, c] if !target.nil? && target.color != color
+    end
+
+    moves
+  end
+
   # attr_accessor :moved
   #
   # Base Movement: Can't move over the same tiles as other pieces
