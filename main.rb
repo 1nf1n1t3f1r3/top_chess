@@ -5,32 +5,131 @@
 # Test if Board displays
 # Create a testing ground with some White/Black Pieces
 #
+# Add Turn Order
 # Add Movement Functions to Board & Piece (Knight, probably)
 # Start Testing them
 # Repeat with other Pieces until done (Knight, Bishop ... Pawn, probably)
 ## Add Illegal Move Checker
-# Add Turn Order
-#
+# #
 # Make sure to check when two pieces can move to the same position
 
 class Game
+  def initialize
+    @board = Board.new
+    @players = [Player.new(:white, :human), Player.new(:black, :ai)]
+    @current_player_index = 0
+  end
+
+  def play_turn
+    player = @players[@current_player_index]
+    @board.display
+    from, to = player.get_move(@board)
+
+    piece = @board.grid[from[0]][from[1]]
+    if piece.nil? || piece.color != player.color
+      puts 'Invalid selection!'
+      return
+    end
+
+    moves = piece.possible_moves(@board, from[0], from[1])
+    unless moves.include?(to)
+      puts 'Illegal move!'
+      return
+    end
+
+    @board.move_piece(from, to)
+    @current_player_index = 1 - @current_player_index
+  end
+
   # Handle Turn Order
   # Check Illegal Moves
   # Check Win/Loss/Draw Conditions
 end
 
+class Player
+  attr_reader :color
+
+  PIECES = %w[N B R Q K]
+
+  def initialize(color, type = :human)
+    @color = color
+    @type = type # :human or :ai
+  end
+
+  def get_move(board)
+    return ai_move(board) unless @type == :human
+
+    loop do
+      puts "#{@color.to_s.capitalize}'s move (e.g. Nb1-c3, e2-e4, 0-0, 0-0-0):"
+      input = gets.chomp.strip
+
+      # Handle castling
+      if input == '0-0'
+        return [:castle_kingside]
+      elsif input == '0-0-0'
+        return [:castle_queenside]
+      end
+
+      # Parse standard move: <Piece?><from>-<to>, e.g., Nb1-c3 or e2-e4
+      match = input.match(/^([NBRQK]?)([a-h][1-8])-([a-h][1-8])$/i)
+      unless match
+        puts 'Invalid notation!'
+        next
+      end
+
+      piece_prefix = match[1] # optional, empty for pawn
+      from_square = match[2]
+      to_square = match[3]
+
+      from = Board.algebraic_to_coords(from_square)
+      to   = Board.algebraic_to_coords(to_square)
+
+      # Optional: validate piece prefix matches actual piece at from
+      piece = board.grid[from[0]][from[1]]
+      if piece.nil? || piece_prefix.upcase != piece.to_s_unicode_prefix || piece.color != @color
+        puts "No/Invalid Piece selected at #{from_square}!"
+        next
+      end
+
+      return [from, to]
+    end
+  end
+
+  # For extra credit, simple AI could just pick a random piece and legal move
+  def ai_move(board)
+    pieces = []
+    board.grid.each_with_index do |row, r|
+      row.each_with_index do |piece, c|
+        next if piece.nil? || piece.color != @color
+
+        moves = piece.possible_moves(board, r, c)
+        pieces << [[r, c], moves] unless moves.empty?
+      end
+    end
+
+    return nil if pieces.empty?
+
+    from, moves = pieces.sample
+    to = moves.sample
+    [from, to]
+  end
+end
+
 class Board
   attr_reader :grid
+
+  FILES = ('a'..'h').to_a
+  RANKS = (1..8).to_a
 
   def initialize
     # grid[row][col] -> 8*8 -> 64 Squares
     @grid = Array.new(8) { Array.new(8, nil) }
 
-    setup_pieces
+    setup_board
   end
 
   # Starting Position:
-  def setup_pieces
+  def setup_board
     # White pieces
     @grid[0][0] = Rook.new(:white)
     @grid[0][1] = Knight.new(:white)
@@ -54,7 +153,7 @@ class Board
     (0..7).each { |col| @grid[6][col] = Pawn.new(:black) }
   end
 
-  def move_pieces
+  def move_piece
   end
 
   # NOTE: This Display doesn't actually print the 'board'. It creates a board-like structure, using data from the @grid
@@ -81,42 +180,9 @@ class Board
     puts '   a b c d e f g h'
     puts # Empty Line for Clarity
   end
-end
 
-class Pawn
-  attr_accessor :color, :moved
-
-  def initialize(color)
-    @color = color
-    @moved = false
+  def algebraic_to_coords
   end
-
-  def to_s
-    @color == :white ? '♟' : '♙'
-  end
-
-  # attr_accessor :moved
-  #
-  # Base Movement: Can't move over the same tiles as other pieces
-  #
-  # Can move forward one Tile:
-  #   [0,3] -> [0,4]
-  # First Move can move two Tiles:
-  #   [0,1] -> [0,3]
-  #   Mark as 'has_first_moved'
-  # Taking is forward diagonal one Tile:
-  #   [0,3] -> [1,4]
-  #
-  # En Passant
-  #   Can take diagonally on the tile *behind* a Pawn that has 'has_first_moved', removing that Pawn
-  #   White:
-  #   [0,1] -> [0,3]
-  #   Black:
-  #   [1,3] -> [0,2]
-  #   Delete White Pawn at
-  # Promotion, something like:
-  #   board.delete(this_pawn)
-  #   board.initialize(Queen)
 end
 
 class Knight
@@ -156,6 +222,42 @@ class Knight
 
     moves
   end
+end
+
+class Pawn
+  attr_accessor :color, :moved
+
+  def initialize(color)
+    @color = color
+    @moved = false
+  end
+
+  def to_s
+    @color == :white ? '♟' : '♙'
+  end
+
+  # attr_accessor :moved
+  #
+  # Base Movement: Can't move over the same tiles as other pieces
+  #
+  # Can move forward one Tile:
+  #   [0,3] -> [0,4]
+  # First Move can move two Tiles:
+  #   [0,1] -> [0,3]
+  #   Mark as 'has_first_moved'
+  # Taking is forward diagonal one Tile:
+  #   [0,3] -> [1,4]
+  #
+  # En Passant
+  #   Can take diagonally on the tile *behind* a Pawn that has 'has_first_moved', removing that Pawn
+  #   White:
+  #   [0,1] -> [0,3]
+  #   Black:
+  #   [1,3] -> [0,2]
+  #   Delete White Pawn at
+  # Promotion, something like:
+  #   board.delete(this_pawn)
+  #   board.initialize(Queen)
 end
 
 class Bishop
@@ -227,8 +329,11 @@ class King
   # Castling
 end
 
-board = Board.new
-board.display
-knight = board.grid[0][1]
-moves = knight.possible_moves(board, 0, 1)
-puts "Knight at b1 can move to: #{moves.map { |r, c| [r, c] }}"
+# board = Board.new
+# board.display
+# knight = board.grid[0][1]
+# moves = knight.possible_moves(board, 0, 1)
+# puts "Knight at b1 can move to: #{moves.map { |r, c| [r, c] }}"
+
+game = Game.new
+game.play_turn
