@@ -16,7 +16,7 @@
 class Game
   def initialize
     @board = Board.new
-    @players = [Player.new(:white, :human), Player.new(:black, :ai)]
+    @players = [Player.new(:white, :human), Player.new(:black, :human)]
     @current_player_index = 0
   end
 
@@ -25,31 +25,45 @@ class Game
     @board.display
     from, to = player.get_move(@board)
 
+    # Get the Piece
     piece = @board.grid[from[0]][from[1]]
     if piece.nil? || piece.color != player.color
       puts 'Invalid selection!'
       return
     end
 
+    # Get the Move
     moves = piece.possible_moves(@board, from[0], from[1])
     unless moves.include?(to)
       puts 'Illegal move!'
       return
     end
 
+    # Move
     @board.move_piece(from, to)
+
+    # Swap Turn
     @current_player_index = 1 - @current_player_index
   end
 
-  # Handle Turn Order
-  # Check Illegal Moves
-  # Check Win/Loss/Draw Conditions
+  # Main game loop
+  def play_match
+    loop do
+      play_turn
+      break if victory_condition?
+    end
+
+    @board.display
+    puts 'Game over!'
+  end
+
+  def victory_condition?
+    false # TODO: Implement checkmate/draw
+  end
 end
 
 class Player
   attr_reader :color
-
-  PIECES = %w[N B R Q K]
 
   def initialize(color, type = :human)
     @color = color
@@ -153,12 +167,15 @@ class Board
     (0..7).each { |col| @grid[6][col] = Pawn.new(:black) }
   end
 
+  # Move the Piece on the Board
   def move_piece(from, to)
     piece = @grid[from[0]][from[1]]
     if piece.nil?
       puts 'No piece at the starting position!'
       return
     end
+
+    # Check if the move is legal
 
     # Move piece to destination
     @grid[to[0]][to[1]] = piece
@@ -168,8 +185,6 @@ class Board
 
     # Optional: mark that the piece has moved (for pawns, rooks, king)
     piece.moved = true if piece.respond_to?(:moved)
-
-    display
   end
 
   # NOTE: This Display doesn't actually print the 'board'. It creates a board-like structure, using data from the @grid
@@ -197,55 +212,13 @@ class Board
     puts # Empty Line for Clarity
   end
 
+  # Notation Helper
   def self.algebraic_to_coords(square)
     file = square[0].downcase
     rank = square[1].to_i
     col = FILES.index(file)
     row = rank - 1
     [row, col]
-  end
-end
-
-class Knight
-  attr_accessor :color, :moved
-
-  def initialize(color)
-    @color = color
-    @moved = false
-  end
-
-  def to_s
-    @color == :white ? '♞' : '♘'
-  end
-
-  def to_unicode
-    'N'
-  end
-
-  # 'Jumping' Movement: Can move over other pieces
-  def possible_moves(board, row, col)
-    moves = []
-
-    # All 8 possible "L" moves
-    deltas = [
-      [2, 1], [1, 2], [-1, 2], [-2, 1],
-      [-2, -1], [-1, -2], [1, -2], [2, -1]
-    ]
-
-    # Deltas + Start Pos
-    deltas.each do |dr, dc|
-      r = row + dr
-      c = col + dc
-
-      # Only include moves inside the board
-      next unless r.between?(0, 7) && c.between?(0, 7)
-
-      # Check if empty square or enemy piece
-      target = board.grid[r][c]
-      moves << [r, c] if target.nil? || target.color != color
-    end
-
-    moves
   end
 end
 
@@ -289,12 +262,53 @@ class Pawn
   #   board.initialize(Queen)
 end
 
+class Knight
+  attr_accessor :color, :moved
+
+  def initialize(color)
+    @color = color
+  end
+
+  def to_s
+    @color == :white ? '♞' : '♘'
+  end
+
+  def to_unicode
+    'N'
+  end
+
+  # 'Jumping' Movement: Can move over other pieces
+  def possible_moves(board, row, col)
+    moves = []
+
+    # All 8 possible "L" moves
+    deltas = [
+      [2, 1], [1, 2], [-1, 2], [-2, 1],
+      [-2, -1], [-1, -2], [1, -2], [2, -1]
+    ]
+
+    # Deltas + Start Pos
+    deltas.each do |dr, dc|
+      r = row + dr
+      c = col + dc
+
+      # Only include moves inside the board
+      next unless r.between?(0, 7) && c.between?(0, 7)
+
+      # Check if empty square or enemy piece
+      target = board.grid[r][c]
+      moves << [r, c] if target.nil? || target.color != color
+    end
+
+    moves
+  end
+end
+
 class Bishop
   attr_accessor :color, :moved
 
   def initialize(color)
     @color = color
-    @moved = false
   end
 
   def to_s
@@ -338,7 +352,6 @@ class Queen
 
   def initialize(color)
     @color = color
-    @moved = false
   end
 
   def to_s
@@ -382,4 +395,4 @@ end
 # puts "Knight at b1 can move to: #{moves.map { |r, c| [r, c] }}"
 
 game = Game.new
-game.play_turn
+game.play_match
