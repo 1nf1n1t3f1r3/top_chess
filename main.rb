@@ -60,7 +60,7 @@ class Player
     return ai_move(board) unless @type == :human
 
     loop do
-      puts "#{@color.to_s.capitalize}'s move (e.g. Nb1-c3, e2-e4, 0-0, 0-0-0):"
+      puts "#{@color.capitalize}'s move (e.g. Nb1-c3, e2-e4, 0-0, 0-0-0):"
       input = gets.chomp.strip
 
       # Handle castling
@@ -77,17 +77,17 @@ class Player
         next
       end
 
-      piece_prefix = match[1] # optional, empty for pawn
+      piece_prefix = match[1] # Theoretically optional, but for style. Empty for pawn
       from_square = match[2]
       to_square = match[3]
 
       from = Board.algebraic_to_coords(from_square)
       to   = Board.algebraic_to_coords(to_square)
 
-      # Optional: validate piece prefix matches actual piece at from
+      # Validate Piece Prefix matches Piece at Selected Square
       piece = board.grid[from[0]][from[1]]
-      if piece.nil? || piece_prefix.upcase != piece.to_s_unicode_prefix || piece.color != @color
-        puts "No/Invalid Piece selected at #{from_square}!"
+      if piece.nil? || piece_prefix.upcase != piece.to_unicode || piece.color != @color
+        puts "No/Invalid Piece #{piece} selected at #{from_square}!"
         next
       end
 
@@ -181,7 +181,12 @@ class Board
     puts # Empty Line for Clarity
   end
 
-  def algebraic_to_coords
+  def self.algebraic_to_coords(square)
+    file = square[0].downcase
+    rank = square[1].to_i
+    col = FILES.index(file)
+    row = rank - 1
+    [row, col]
   end
 end
 
@@ -195,6 +200,10 @@ class Knight
 
   def to_s
     @color == :white ? '♞' : '♘'
+  end
+
+  def to_unicode
+    'N'
   end
 
   # 'Jumping' Movement: Can move over other pieces
@@ -236,6 +245,10 @@ class Pawn
     @color == :white ? '♟' : '♙'
   end
 
+  def to_unicode
+    ''
+  end
+
   # attr_accessor :moved
   #
   # Base Movement: Can't move over the same tiles as other pieces
@@ -271,6 +284,11 @@ class Bishop
   def to_s
     @color == :white ? '♝' : '♗'
   end
+
+  def to_unicode
+    'B'
+  end
+
   # Base Movement: Can't move over the same tiles as other pieces
   # Diagonal only:
   #   [0,0] -> [1,1] -> [2,2]
@@ -287,6 +305,11 @@ class Rook
   def to_s
     @color == :white ? '♜' : '♖'
   end
+
+  def to_unicode
+    'R'
+  end
+
   # attr_accessor :moved
   #
   # Base Movement: Can't move over the same tiles as other pieces
@@ -305,6 +328,11 @@ class Queen
   def to_s
     @color == :white ? '♛' : '♕'
   end
+
+  def to_unicode
+    'Q'
+  end
+
   # Base Movement: Can't move over the same tiles as other pieces
   # Straight and Diagonal. I.E. Bishop + Rook
 end
@@ -321,8 +349,10 @@ class King
     @color == :white ? '♚' : '♔'
   end
 
-  # attr_accessor :moved
-  #
+  def to_unicode
+    'K'
+  end
+
   # Base Movement: Can't move over the same tiles as other pieces
   # Can move one Tile in any Direction
   #
