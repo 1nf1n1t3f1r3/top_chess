@@ -198,8 +198,43 @@ class Board
       @en_passant_target = [middle_row, from[1]]
     end
 
+    handle_promotion(to)
+
     # Mark that the piece has moved (for pawns, rooks, king)
     piece.moved = true if piece.respond_to?(:moved)
+  end
+
+  # Promotion:
+  def handle_promotion(position)
+    row, col = position
+    piece = @grid[row][col]
+
+    return unless piece.is_a?(Pawn)
+
+    # White promotes at row 7, black at row 0
+    if (piece.color == :white && row == 7) ||
+       (piece.color == :black && row == 0)
+
+      promote_pawn(row, col, piece.color)
+    end
+  end
+
+  def promote_pawn(row, col, color)
+    puts 'Promote pawn to (Q, R, B, N):'
+    choice = gets.chomp.upcase
+
+    new_piece =
+      case choice
+      when 'Q' then Queen.new(color)
+      when 'R' then Rook.new(color)
+      when 'B' then Bishop.new(color)
+      when 'N' then Knight.new(color)
+      else
+        puts 'Invalid choice. Defaulting to Queen.'
+        Queen.new(color)
+      end
+
+    @grid[row][col] = new_piece
   end
 
   # NOTE: This Display doesn't actually print the 'board'. It creates a board-like structure, using data from the @grid
@@ -283,7 +318,6 @@ class Pawn
     end
     moves
   end
-  # Promotion, something like:
 end
 
 class Knight
