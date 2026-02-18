@@ -21,10 +21,37 @@ class Game
 end
 
 class Board
-  # Store [0,0] to [7,7]
-  # (Helper Function to convert into A1-H8)
-  # Store piece Objects on it
-  # Handle final/'actual' step of all Pieces' movement onto the actual Board
+  attr_reader :grid
+
+  def initialize
+    # grid[row][col]
+    @grid = Array.new(8) { Array.new(8, nil) }
+  end
+
+  # NOTE: This Display doesn't actually print the 'board'. It creates a board-like structure, using data from the @grid
+  def display
+    puts # Empty Line for Clarity
+
+    # Printing 1-8 on the sides
+    7.downto(0) do |row|
+      print "#{row + 1}  "
+
+      # The 'Meat' of the Function, filling in all the squares or our Row*Col based on @grid data
+      0.upto(7) do |col|
+        if @grid[row][col].nil?
+          print '. '
+        else
+          print "#{@grid[row][col]} "
+        end
+      end
+
+      puts
+    end
+
+    # Printing a-h at the bottom
+    puts '   a b c d e f g h'
+    puts # Empty Line for Clarity
+  end
 end
 
 class Pawn
@@ -91,3 +118,6 @@ class King
   #
   # Castling
 end
+
+board = Board.new
+board.display
