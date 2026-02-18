@@ -1,20 +1,20 @@
 # Steps:
-# Board
+#
 # Display Board
-# Create any Piece
+# Create any Piece (without characteristics)
 # Put Piece on Board
 # Test if Board displays
 #
 # Create a testing ground with some White/Black Pieces
-# Add Movement Functions to Board & Piece
-# Test them
+# Add Movement Functions to Board & Piece (Knight, probably)
+# Start Testing them
 # Repeat with other Pieces until done (Knight, Bishop ... Pawn, probably)
 #
 # Add Illegal Move Checker
 # Add Turn Order
 # Initialize Game (Proper Starting Position)
 
-class Main
+class Game
   # Handle Turn Order
   # Check Illegal Moves
   # Check Win/Loss/Draw Conditions
@@ -28,6 +28,13 @@ class Board
 end
 
 class Pawn
+  attr_accessor :color, :moved
+
+  def initialize(color)
+    @color = color
+    @moved = false
+  end
+
   # attr_accessor :moved
   #
   # Base Movement: Can't move over the same tiles as other pieces
