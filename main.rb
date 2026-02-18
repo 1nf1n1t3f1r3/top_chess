@@ -153,7 +153,23 @@ class Board
     (0..7).each { |col| @grid[6][col] = Pawn.new(:black) }
   end
 
-  def move_piece
+  def move_piece(from, to)
+    piece = @grid[from[0]][from[1]]
+    if piece.nil?
+      puts 'No piece at the starting position!'
+      return
+    end
+
+    # Move piece to destination
+    @grid[to[0]][to[1]] = piece
+
+    # Clear the starting square
+    @grid[from[0]][from[1]] = nil
+
+    # Optional: mark that the piece has moved (for pawns, rooks, king)
+    piece.moved = true if piece.respond_to?(:moved)
+
+    display
   end
 
   # NOTE: This Display doesn't actually print the 'board'. It creates a board-like structure, using data from the @grid
