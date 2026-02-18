@@ -130,7 +130,7 @@ class Player
 end
 
 class Board
-  attr_reader :grid
+  attr_reader :grid, :en_passant_target
 
   FILES = ('a'..'h').to_a
   RANKS = (1..8).to_a
@@ -138,6 +138,7 @@ class Board
   def initialize
     # grid[row][col] -> 8*8 -> 64 Squares
     @grid = Array.new(8) { Array.new(8, nil) }
+    @en_passant_target = nil
 
     setup_board
   end
@@ -169,21 +170,35 @@ class Board
 
   # Move the Piece on the Board
   def move_piece(from, to)
-    piece = @grid[from[0]][from[1]]
+    piece = @grid[from[0]][from[1]] # Grid A-H/1-8
     if piece.nil?
       puts 'No piece at the starting position!'
       return
     end
 
-    # Check if the move is legal
+    # Check if the move is legal (Check)
 
-    # Move piece to destination
+    # En passant capture
+    if piece.is_a?(Pawn) && to == @en_passant_target
+      direction = piece.color == :white ? -1 : 1
+      captured_row = to[0] + direction
+      @grid[captured_row][to[1]] = nil
+    end
+
+    # Move piece to destination & clear starting square
     @grid[to[0]][to[1]] = piece
-
-    # Clear the starting square
     @grid[from[0]][from[1]] = nil
 
-    # Optional: mark that the piece has moved (for pawns, rooks, king)
+    # Reset en passant target
+    @en_passant_target = nil
+
+    # Set new en passant if double pawn move
+    if piece.is_a?(Pawn) && (from[0] - to[0]).abs == 2
+      middle_row = (from[0] + to[0]) / 2
+      @en_passant_target = [middle_row, from[1]]
+    end
+
+    # Mark that the piece has moved (for pawns, rooks, king)
     piece.moved = true if piece.respond_to?(:moved)
   end
 
@@ -252,41 +267,23 @@ class Pawn
       moves << [two_step, col] if !moved && board.grid[two_step][col].nil?
     end
 
-    # 3 Diagonal Captures
+    # 3 Diagonal Captures. First Check one Left
     [-1, 1].each do |dc|
       r = row + direction
       c = col + dc
       next unless r.between?(0, 7) && c.between?(0, 7)
 
       target = board.grid[r][c]
-      moves << [r, c] if !target.nil? && target.color != color
-    end
 
+      # Normal capture
+      moves << [r, c] if !target.nil? && target.color != color
+
+      # En passant
+      moves << [r, c] if board.en_passant_target == [r, c]
+    end
     moves
   end
-
-  # attr_accessor :moved
-  #
-  # Base Movement: Can't move over the same tiles as other pieces
-  #
-  # Can move forward one Tile:
-  #   [0,3] -> [0,4]
-  # First Move can move two Tiles:
-  #   [0,1] -> [0,3]
-  #   Mark as 'has_first_moved'
-  # Taking is forward diagonal one Tile:
-  #   [0,3] -> [1,4]
-  #
-  # En Passant
-  #   Can take diagonally on the tile *behind* a Pawn that has 'has_first_moved', removing that Pawn
-  #   White:
-  #   [0,1] -> [0,3]
-  #   Black:
-  #   [1,3] -> [0,2]
-  #   Delete White Pawn at
   # Promotion, something like:
-  #   board.delete(this_pawn)
-  #   board.initialize(Queen)
 end
 
 class Knight
