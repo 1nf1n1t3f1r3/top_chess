@@ -177,6 +177,7 @@ class Board
     end
 
     # Check if the move is legal (Check)
+    check_legality
 
     # En passant capture
     if piece.is_a?(Pawn) && to == @en_passant_target
@@ -202,6 +203,9 @@ class Board
 
     # Mark that the piece has moved (for pawns, rooks, king)
     piece.moved = true if piece.respond_to?(:moved)
+  end
+
+  def check_legality
   end
 
   # Promotion:
@@ -318,6 +322,8 @@ class Pawn
     end
     moves
   end
+
+  # TODO: Perhaps?: Allow Promotion by e7-e8Q
 end
 
 class Knight
@@ -377,9 +383,41 @@ class Bishop
     'B'
   end
 
-  # Base Movement: Can't move over the same tiles as other pieces
-  # Diagonal only:
-  #   [0,0] -> [1,1] -> [2,2]
+  def possible_moves(board, row, col)
+    moves = []
+
+    # All Diagonals it can move towards
+    directions = [
+      [1, 1],
+      [1, -1],
+      [-1, 1],
+      [-1, -1]
+    ]
+
+    # Diagonals + Start Pos
+    directions.each do |dr, dc|
+      r = row + dr
+      c = col + dc
+
+      # Loop as long as we find valid squares, or squares occupied by the enemy
+      while r.between?(0, 7) && c.between?(0, 7)
+        target = board.grid[r][c]
+
+        if target.nil?
+          moves << [r, c]
+        else
+          # Enemy piece → capture and stop
+          moves << [r, c] if target.color != color
+          break
+        end
+
+        r += dr
+        c += dc
+      end
+    end
+
+    moves
+  end
 end
 
 class Rook
@@ -445,12 +483,6 @@ class King
   #
   # Castling
 end
-
-# board = Board.new
-# board.display
-# knight = board.grid[0][1]
-# moves = knight.possible_moves(board, 0, 1)
-# puts "Knight at b1 can move to: #{moves.map { |r, c| [r, c] }}"
 
 game = Game.new
 game.play_match
