@@ -201,11 +201,30 @@ class Board
 
     handle_promotion(to)
 
+    # Handle moving the Rook 'Automatically'
+    handle_castling_rook(from, to) if piece.is_a?(King) && (from[1] - to[1]).abs == 2
+
     # Mark that the piece has moved (for pawns, rooks, king)
     piece.moved = true if piece.respond_to?(:moved)
   end
 
   def check_legality
+  end
+
+  def handle_castling_rook(from, to)
+    row = from[0]
+
+    if to[1] == 6 # King sided
+      rook = @grid[row][7]
+      @grid[row][5] = rook
+      @grid[row][7] = nil
+      rook.moved = true
+    elsif to[1] == 2 # Queen side
+      rook = @grid[row][0]
+      @grid[row][3] = rook
+      @grid[row][0] = nil
+      rook.moved = true
+    end
   end
 
   # Promotion:
