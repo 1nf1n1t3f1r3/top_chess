@@ -436,11 +436,41 @@ class Rook
     'R'
   end
 
-  # attr_accessor :moved
-  #
-  # Base Movement: Can't move over the same tiles as other pieces
-  # Straight only:
-  # [0,0] -> [0,1], [0,2]
+  def possible_moves(board, row, col)
+    moves = []
+
+    # All Straights it can move towards
+    directions = [
+      [0, 1],
+      [0, -1],
+      [1, 0],
+      [-1, 0]
+    ]
+
+    # Straights + Start Pos
+    directions.each do |dr, dc|
+      r = row + dr
+      c = col + dc
+
+      # Loop as long as we find valid squares, or squares occupied by the enemy
+      while r.between?(0, 7) && c.between?(0, 7)
+        target = board.grid[r][c]
+
+        if target.nil?
+          moves << [r, c]
+        else
+          # Enemy piece → capture and stop
+          moves << [r, c] if target.color != color
+          break
+        end
+
+        r += dr
+        c += dc
+      end
+    end
+
+    moves
+  end
 end
 
 class Queen
@@ -457,9 +487,6 @@ class Queen
   def to_unicode
     'Q'
   end
-
-  # Base Movement: Can't move over the same tiles as other pieces
-  # Straight and Diagonal. I.E. Bishop + Rook
 end
 
 class King
