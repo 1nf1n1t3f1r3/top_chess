@@ -504,7 +504,7 @@ class Queen
       [-1, -1]
     ]
 
-    # Straights + Start Pos
+    # Straights & Diagonals + Start Pos
     directions.each do |dr, dc|
       r = row + dr
       c = col + dc
@@ -546,10 +546,38 @@ class King
     'K'
   end
 
-  # Base Movement: Can't move over the same tiles as other pieces
-  # Can move one Tile in any Direction
-  #
-  # Castling
+  def possible_moves(board, row, col)
+    moves = []
+
+    # All Straights & Diagonals it can move towards
+    directions = [
+      [0, 1],
+      [0, -1],
+      [1, 0],
+      [-1, 0],
+
+      [1, 1],
+      [1, -1],
+      [-1, 1],
+      [-1, -1]
+    ]
+
+    # Straights & Diagonals + Start Pos
+    directions.each do |dr, dc|
+      r = row + dr
+      c = col + dc
+
+      next unless r.between?(0, 7) && c.between?(0, 7)
+
+      target = board.grid[r][c]
+
+      moves << [r, c] if target.nil? || target.color != color
+    end
+
+    # Castling
+
+    moves
+  end
 end
 
 game = Game.new
