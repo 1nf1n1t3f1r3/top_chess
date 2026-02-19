@@ -82,6 +82,29 @@ class Game
     end
   end
 
+  def save(filename)
+    Dir.mkdir('saves') unless Dir.exist?('saves')
+
+    FileUtils.cp('autosave.yaml', "saves/#{filename}.yaml")
+
+    puts "Game saved as saves/#{filename}.yaml"
+  end
+
+  def self.load(filename)
+    data = YAML.load_file(filename)
+
+    game = Game.new
+
+    data[:moves].each do |notation|
+      game.replay_move(notation)
+    end
+
+    game.instance_variable_set(:@current_player_index, data[:current_player_index])
+
+    game
+  end
+
+  # Building Notation in Game for saving. A bit not-DRY, but.. Fine for now.
   def build_notation(piece, from, to)
     from_square = Board.coords_to_algebraic(from[0], from[1])
     to_square   = Board.coords_to_algebraic(to[0], to[1])
@@ -96,6 +119,24 @@ class Game
                    end
 
     "#{piece_letter}#{from_square}-#{to_square}"
+  end
+
+  # Function to Replay the Notation when Loading
+  def replay_move(notation)
+    if notation == '0-0'
+      @board.castle_kingside(current_player.color)
+    elsif notation == '0-0-0'
+      @board.castle_queenside(current_player.color)
+    else
+      match = notation.match(/^([NBRQK]?)([a-h][1-8])-([a-h][1-8])$/)
+
+      from = Board.algebraic_to_coords(match[2])
+      to   = Board.algebraic_to_coords(match[3])
+
+      @board.move_piece(from, to)
+    end
+
+    @current_player_index = 1 - @current_player_index
   end
 
   # Main game loop
@@ -765,5 +806,38 @@ class King
   end
 end
 
-game = Game.new
+# game = Game.new
+# game.play_match
+
+puts '1. New Game'
+puts '2. Load Game'
+
+choice = gets.chomp
+
+if choice == '2'
+  saves = Dir.glob('saves/*.yaml')
+
+  if saves.empty?
+    puts 'No saved games found.'
+    game = Game.new
+  else
+    puts 'Choose a save file:'
+
+    saves.each_with_index do |file, index|
+      puts "#{index + 1}. #{File.basename(file)}"
+    end
+
+    selection = gets.chomp.to_i - 1
+
+    if selection.between?(0, saves.length - 1)
+      game = Game.load(saves[selection])
+    else
+      puts 'Invalid selection. Starting new game.'
+      game = Game.new
+    end
+  end
+else
+  game = Game.new
+end
+
 game.play_match
