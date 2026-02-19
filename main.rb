@@ -1,12 +1,10 @@
 # Steps:
 # Stop the game from breaking when typing 0-0
-# Disallow Castling when Checked
-# Add Victory Condition Checker
-#
-# Bonus?:
 # Add Saving
-# Add AI?
 #
+# Add an AI that doesn't break. Stack too deep error when dealing with check sometimes.
+#
+# Add more Victory Conditions (3-Move Repetition, Insufficient Material, Agreed Draw)
 # QOL Notation:
 # Short Notation
 # Allow '*' or 'x' for '-' IFF there's Piece to be captured
@@ -23,6 +21,20 @@ class Game
   def play_turn
     player = @players[@current_player_index]
     @board.display
+
+    # Check Victory Conditions First
+    legal_moves = @board.legal_moves_for(player.color)
+
+    if legal_moves.empty?
+      if @board.in_check?(player.color)
+        puts 'Checkmate!'
+      else
+        puts "Stalemate! It's a draw!"
+      end
+      exit
+    end
+
+    # Play the Game
     from, to = player.get_move(@board)
 
     # Get the Piece
@@ -171,6 +183,25 @@ class Board
     @grid[7][6] = Knight.new(:black)
     @grid[7][7] = Rook.new(:black)
     (0..7).each { |col| @grid[6][col] = Pawn.new(:black) }
+  end
+
+  # Get an array of all Legal Moves
+  def legal_moves_for(color)
+    legal_moves = []
+
+    @grid.each_with_index do |row, r|
+      row.each_with_index do |piece, c|
+        next if piece.nil? || piece.color != color
+
+        piece.possible_moves(self, r, c).each do |to|
+          from = [r, c]
+
+          legal_moves << [from, to] unless move_causes_check?(from, to, color)
+        end
+      end
+    end
+
+    legal_moves
   end
 
   # Move the Piece on the Board
