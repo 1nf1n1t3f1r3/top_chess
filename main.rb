@@ -574,9 +574,32 @@ class King
       moves << [r, c] if target.nil? || target.color != color
     end
 
-    # Castling
+    return moves if moved # (Can't Castle because Moved)
+
+    # Castling: King/Short and Queen/Long
+    moves << [row, col + 2] if can_castle_kingside?(board, row, col)
+    moves << [row, col - 2] if can_castle_queenside?(board, row, col)
 
     moves
+  end
+
+  # Check if square is occupied by a Rook first. Then check if that rook has .moved. Then check if the squares between them are empty
+  def can_castle_kingside?(board, row, col)
+    rook = board.grid[row][7]
+    return false unless rook.is_a?(Rook)
+    return false if rook.moved
+
+    board.grid[row][5].nil? && board.grid[row][6].nil?
+  end
+
+  def can_castle_queenside?(board, row, col)
+    rook = board.grid[row][0]
+    return false unless rook.is_a?(Rook)
+    return false if rook.moved
+
+    board.grid[row][1].nil? &&
+      board.grid[row][2].nil? &&
+      board.grid[row][3].nil?
   end
 end
 
