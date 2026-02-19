@@ -1,6 +1,34 @@
 ---
 :moves:
 - e2-e4
+- e7-e5
+- Ng1-f3
 - Nb8-c6
-- d2-d4
+- Bf1-c4
+- Ng8-f6
+- a2-a3
+- Nf6-h5
+- a3-a4
+- Nh5-g3
+- Ke1-g1
+- Bf8-c5
+- Nf3-e5
+- a7-a6
+- Nb1-c3
+- a6-a5
+- Nc3-d5
+- b7-b6
+- Ne5-g4
+- b6-b5
+- Ng4-h6
+- Bc8-b7
+- Nh6-g4
+- b5-b4
+- Nd5-f6
+- Qd8-f6
+- e4-e5
+- d7-d5
+- e5-d6
+- h7-h6
+- d6-d7
 :current_player_index: 1

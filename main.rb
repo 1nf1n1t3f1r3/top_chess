@@ -1,6 +1,7 @@
 # Fix the Stack Overflow
 # in_check?
 # square_attacked?
+# Maybe consider getting rid of the first legal_moves_for check
 #
 # legal_moves_for
 
@@ -50,20 +51,20 @@ class Game
       exit
     end
 
-    # --- DEBUG DISPLAY ---
-    puts '=== DEBUG INFO ==='
-    puts "Legal moves for #{player.color}:"
-    legal_moves.each do |from, to|
-      puts "#{Board.coords_to_algebraic(*from)}-#{Board.coords_to_algebraic(*to)}"
-    end
+    # # --- DEBUG DISPLAY ---
+    # puts '=== DEBUG INFO ==='
+    # puts "Legal moves for #{player.color}:"
+    # legal_moves.each do |from, to|
+    #   puts "#{Board.coords_to_algebraic(*from)}-#{Board.coords_to_algebraic(*to)}"
+    # end
 
-    puts "\nWhite attacked squares:"
-    puts @white_attacked_squares.map { |r, c| Board.coords_to_algebraic(r, c) }.join(', ')
+    # puts "\nWhite attacked squares:"
+    # puts @white_attacked_squares.map { |r, c| Board.coords_to_algebraic(r, c) }.join(', ')
 
-    puts "\nBlack attacked squares:"
-    puts @black_attacked_squares.map { |r, c| Board.coords_to_algebraic(r, c) }.join(', ')
-    puts "==================\n\n"
-    # --- END DEBUG ---
+    # puts "\nBlack attacked squares:"
+    # puts @black_attacked_squares.map { |r, c| Board.coords_to_algebraic(r, c) }.join(', ')
+    # puts "==================\n\n"
+    # # --- END DEBUG ---
 
     # Play the Game
     move = nil
@@ -204,6 +205,11 @@ class Game
 
   # Main game loop
   def play_match
+    puts "Use Long Notation like: e2-e4, Nb1-c3, Bf1-c4, Ra1-a3, Qd1-f3, Ke1-e2
+	   Castle by typing Ke1-g1, Ke1-c1, Ke8-g8 or Ke8-c8
+	   Alternatively, type ':save' to Save the Game
+	   Or use 'CTRL+C', followed by 'load main.rb' to go back to the start"
+
     loop do
       play_turn
       break if victory_condition?
@@ -230,12 +236,7 @@ class Player
     return ai_move(board) unless @type == :human
 
     loop do
-      puts "#{@color.capitalize}'s move:
-	   Long Notation like: e2-e4, Nb1-c3, Bf1-c4, Ra1-a3, Qd1-f3, Ke1-e2...
-	   Castle by typing Ke1-g1, Ke1-c1, Ke8-g8 or Ke8-c8
-	   Alternatively, type ':save' to Save the Game.
-	   Or use 'CTRL+C', followed by 'load main.rb' to go back to the start.
-	   Geez what a mouthful. Who's building this UI?!"
+      puts "#{@color.capitalize}'s move"
       input = gets.chomp.strip
 
       # Saving
@@ -414,7 +415,33 @@ class Board
     @grid[to[0]][to[1]] = original_from
     @grid[from[0]][from[1]] = nil
 
-    in_check = in_check?(color)
+    # Find King
+    king_pos = find_king(color)
+    enemy_color = color == :white ? :black : :white
+
+    in_check = false
+
+    # Loop Across the Board
+    @grid.each_with_index do |row, r|
+      row.each_with_index do |piece, c|
+        next if piece.nil? || piece.color != enemy_color
+
+        # Get all Attacks
+        attacks =
+          if piece.is_a?(Pawn)
+            piece.possible_attacks(self, r, c)
+          else
+            piece.possible_moves(self, r, c)
+          end
+
+        # If we're Checked, Break and Undo
+        if attacks.include?(king_pos)
+          in_check = true
+          break
+        end
+      end
+      break if in_check
+    end
 
     # Undo move
     @grid[from[0]][from[1]] = original_from
@@ -423,39 +450,39 @@ class Board
     in_check
   end
 
-  # Find the King, find the Enemy, find its Pieces, find all possible Movements, return true if those include our king_pos
-  def in_check?(color)
-    king_pos = find_king(color)
+  # # Find the King, find the Enemy, find its Pieces, find all possible Movements, return true if those include our king_pos
+  # def in_check?(color)
+  #   king_pos = find_king(color)
 
-    enemy_color = color == :white ? :black : :white
+  #   enemy_color = color == :white ? :black : :white
 
-    @grid.each_with_index do |row, r|
-      row.each_with_index do |piece, c|
-        next if piece.nil? || piece.color != enemy_color
+  #   @grid.each_with_index do |row, r|
+  #     row.each_with_index do |piece, c|
+  #       next if piece.nil? || piece.color != enemy_color
 
-        moves = piece.possible_moves(self, r, c)
-        return true if moves.include?(king_pos)
-      end
-    end
+  #       moves = piece.possible_moves(self, r, c)
+  #       return true if moves.include?(king_pos)
+  #     end
+  #   end
 
-    false
-  end
+  #   false
+  # end
 
-  # Like In Check, but for any Square (Though any Square is only 4 possible additional Squares during Castling)
-  def square_attacked?(row, col, color)
-    enemy_color = color == :white ? :black : :white
+  # # Like In Check, but for any Square (Though any Square is only 4 possible additional Squares during Castling)
+  # def square_attacked?(row, col, color)
+  #   enemy_color = color == :white ? :black : :white
 
-    @grid.each_with_index do |r_row, r|
-      r_row.each_with_index do |piece, c|
-        next if piece.nil? || piece.color != enemy_color
+  #   @grid.each_with_index do |r_row, r|
+  #     r_row.each_with_index do |piece, c|
+  #       next if piece.nil? || piece.color != enemy_color
 
-        moves = piece.possible_moves(self, r, c)
-        return true if moves.include?([row, col])
-      end
-    end
+  #       moves = piece.possible_moves(self, r, c)
+  #       return true if moves.include?([row, col])
+  #     end
+  #   end
 
-    false
-  end
+  #   false
+  # end
 
   # Helper to Find the King
   def find_king(color)
@@ -890,8 +917,9 @@ class King
     return false if rook.moved
     return false if moved
     return false unless board.grid[row][5].nil? && board.grid[row][6].nil?
-    return false if board.in_check?(color)
-    return false if board.square_attacked?(row, col + 1, color)
+
+    # return false if board.in_check?(color)
+    # return false if board.square_attacked?(row, col + 1, color)
 
     true
   end
@@ -902,8 +930,9 @@ class King
     return false if rook.moved
     return false if moved
     return false unless board.grid[row][1].nil? && board.grid[row][2].nil? && board.grid[row][3].nil?
-    return false if board.in_check?(color)
-    return false if board.square_attacked?(row, col - 1, color)
+
+    # return false if board.in_check?(color)
+    # return false if board.square_attacked?(row, col - 1, color)
 
     true
   end
