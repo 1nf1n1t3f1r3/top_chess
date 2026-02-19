@@ -16,6 +16,7 @@ class Game
     @board = Board.new
     @players = [Player.new(:white, :human), Player.new(:black, :human)]
     @current_player_index = 0
+    @move_history = []
   end
 
   def play_turn
@@ -56,11 +57,45 @@ class Game
       return
     end
 
-    # Move
+    # Store & Move
+    notation = build_notation(piece, from, to)
+    @move_history << notation
+
     @board.move_piece(from, to)
 
     # Swap Turn
     @current_player_index = 1 - @current_player_index
+
+    # Autosave after every move
+    autosave
+  end
+
+  # Autosave
+  def autosave
+    data = {
+      moves: @move_history,
+      current_player_index: @current_player_index
+    }
+
+    File.open('autosave.yaml', 'w') do |file|
+      file.write(data.to_yaml)
+    end
+  end
+
+  def build_notation(piece, from, to)
+    from_square = Board.coords_to_algebraic(from[0], from[1])
+    to_square   = Board.coords_to_algebraic(to[0], to[1])
+
+    piece_letter = case piece.class.name
+                   when 'Knight' then 'N'
+                   when 'Bishop' then 'B'
+                   when 'Rook'   then 'R'
+                   when 'Queen'  then 'Q'
+                   when 'King'   then 'K'
+                   else '' # Pawn
+                   end
+
+    "#{piece_letter}#{from_square}-#{to_square}"
   end
 
   # Main game loop
@@ -122,7 +157,7 @@ class Player
         next
       end
 
-      return [from, to]
+      return [from, to, input]
     end
   end
 
@@ -384,6 +419,12 @@ class Board
     col = FILES.index(file)
     row = rank - 1
     [row, col]
+  end
+
+  def self.coords_to_algebraic(row, col)
+    file = ('a'.ord + col).chr
+    rank = row + 1
+    "#{file}#{rank}"
   end
 end
 
