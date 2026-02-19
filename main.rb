@@ -1,3 +1,13 @@
+# Fix the Stack Overflow
+# in_check?
+# square_attacked?
+#
+# legal_moves_for
+
+# How to do it?
+# Calculate legal moves once
+# Include attacked squares by color
+
 # More Features:
 # Stop the game from breaking when typing 0-0
 # Add an AI that doesn't break; stack too deep error when dealing with check sometimes
@@ -15,23 +25,45 @@ class Game
     @players = [Player.new(:white, :human), Player.new(:black, :human)]
     @current_player_index = 0
     @move_history = []
+    @white_attacked_squares = []
+    @black_attacked_squares = []
   end
 
   def play_turn
     player = @players[@current_player_index]
     @board.display
 
-    # Check Victory Conditions First
-    legal_moves = @board.legal_moves_for(player.color)
+    # Compute legal moves AND populate attacked squares
+    legal_moves = @board.legal_moves_for(player.color,
+                                         @white_attacked_squares,
+                                         @black_attacked_squares)
 
     if legal_moves.empty?
-      if @board.in_check?(player.color)
+      king_pos = @board.find_king(player.color)
+      opponent_attacks = player.color == :white ? @black_attacked_squares : @white_attacked_squares
+
+      if opponent_attacks.include?(king_pos)
         puts 'Checkmate!'
       else
         puts "Stalemate! It's a draw!"
       end
       exit
     end
+
+    # --- DEBUG DISPLAY ---
+    puts '=== DEBUG INFO ==='
+    puts "Legal moves for #{player.color}:"
+    legal_moves.each do |from, to|
+      puts "#{Board.coords_to_algebraic(*from)}-#{Board.coords_to_algebraic(*to)}"
+    end
+
+    puts "\nWhite attacked squares:"
+    puts @white_attacked_squares.map { |r, c| Board.coords_to_algebraic(r, c) }.join(', ')
+
+    puts "\nBlack attacked squares:"
+    puts @black_attacked_squares.map { |r, c| Board.coords_to_algebraic(r, c) }.join(', ')
+    puts "==================\n\n"
+    # --- END DEBUG ---
 
     # Play the Game
     move = nil
@@ -198,7 +230,12 @@ class Player
     return ai_move(board) unless @type == :human
 
     loop do
-      puts "#{@color.capitalize}'s move (e.g. Nb1-c3, e2-e4, 0-0, 0-0-0). Alternatively, type ':save' to Save the Game. Alternatively, Alternatively, type CTRL+C, followed by " + 'load main.rb' + ' to go back to the start. Geez what a mouthful.'
+      puts "#{@color.capitalize}'s move:
+	   Long Notation like: e2-e4, Nb1-c3, Bf1-c4, Ra1-a3, Qd1-f3, Ke1-e2...
+	   Castle by typing Ke1-g1, Ke1-c1, Ke8-g8 or Ke8-c8
+	   Alternatively, type ':save' to Save the Game.
+	   Or use 'CTRL+C', followed by 'load main.rb' to go back to the start.
+	   Geez what a mouthful. Who's building this UI?!"
       input = gets.chomp.strip
 
       # Saving
@@ -296,16 +333,34 @@ class Board
   end
 
   # Get an array of all Legal Moves
-  def legal_moves_for(color)
+  # Compute legal moves for `color`, while populating both white and black attacked squares
+  def legal_moves_for(color, white_attacks, black_attacks)
     legal_moves = []
 
     @grid.each_with_index do |row, r|
       row.each_with_index do |piece, c|
-        next if piece.nil? || piece.color != color
+        next if piece.nil?
 
-        piece.possible_moves(self, r, c).each do |to|
+        # Compute all possible moves for this piece
+        moves = piece.possible_moves(self, r, c)
+
+        # Update attacked squares, with special Pawn handling
+        attacks = piece.is_a?(Pawn) ? piece.possible_attacks(self, r, c) : moves
+
+        # Add squares to the correct attacked array
+        if piece.color == :white
+          white_attacks.concat(attacks)
+        else
+          black_attacks.concat(attacks)
+        end
+
+        # Only compute legal moves for the player whose turn it is
+        next unless piece.color == color
+
+        moves.each do |to|
           from = [r, c]
 
+          # move_causes_check? should still work using the precomputed attacked squares
           legal_moves << [from, to] unless move_causes_check?(from, to, color)
         end
       end
@@ -386,7 +441,7 @@ class Board
     false
   end
 
-  # Like In Check, but for any Square (Though any Square is only 4 possible Squares during Castling)
+  # Like In Check, but for any Square (Though any Square is only 4 possible additional Squares during Castling)
   def square_attacked?(row, col, color)
     enemy_color = color == :white ? :black : :white
 
@@ -550,7 +605,21 @@ class Pawn
     moves
   end
 
-  # TODO: Perhaps?: Allow Promotion by e7-e8Q
+  # Squares this pawn attacks (diagonal only, ignore forward moves)
+  def possible_attacks(board, row, col)
+    attacks = []
+    direction = color == :white ? 1 : -1
+
+    [-1, 1].each do |dc|
+      r = row + direction
+      c = col + dc
+      next unless r.between?(0, 7) && c.between?(0, 7)
+
+      attacks << [r, c]
+    end
+
+    attacks
+  end
 end
 
 class Knight
