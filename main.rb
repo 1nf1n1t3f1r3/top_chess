@@ -487,6 +487,47 @@ class Queen
   def to_unicode
     'Q'
   end
+
+  def possible_moves(board, row, col)
+    moves = []
+
+    # All Straights & Diagonals it can move towards
+    directions = [
+      [0, 1],
+      [0, -1],
+      [1, 0],
+      [-1, 0],
+
+      [1, 1],
+      [1, -1],
+      [-1, 1],
+      [-1, -1]
+    ]
+
+    # Straights + Start Pos
+    directions.each do |dr, dc|
+      r = row + dr
+      c = col + dc
+
+      # Loop as long as we find valid squares, or squares occupied by the enemy
+      while r.between?(0, 7) && c.between?(0, 7)
+        target = board.grid[r][c]
+
+        if target.nil?
+          moves << [r, c]
+        else
+          # Enemy piece → capture and stop
+          moves << [r, c] if target.color != color
+          break
+        end
+
+        r += dr
+        c += dc
+      end
+    end
+
+    moves
+  end
 end
 
 class King
