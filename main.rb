@@ -1,17 +1,12 @@
 # Steps:
-# Display Board
-# Create any Piece (without characteristics)
-# Put Piece on Board
-# Test if Board displays
-# Create a testing ground with some White/Black Pieces
+# Stop the game from breaking when typing 0-0
+# Add Illegal Move Checker
+# Add Victory Condition Checker
 #
-# Add Turn Order
-# Add Movement Functions to Board & Piece (Knight, probably)
-# Start Testing them
-# Repeat with other Pieces until done (Knight, Bishop ... Pawn, probably)
-## Add Illegal Move Checker
-# #
-# Make sure to check when two pieces can move to the same position
+# QOL Notation:
+# Short Notation
+# e8Q for Promotion
+# 0-0 and 0-0-0  for Castling
 
 class Game
   def initialize
@@ -28,14 +23,19 @@ class Game
     # Get the Piece
     piece = @board.grid[from[0]][from[1]]
     if piece.nil? || piece.color != player.color
-      puts 'Invalid selection!'
+      puts 'Invalid Selection!'
       return
     end
 
     # Get the Move
     moves = piece.possible_moves(@board, from[0], from[1])
     unless moves.include?(to)
-      puts 'Illegal move!'
+      puts 'Illegal Move!'
+      return
+    end
+
+    if @board.move_causes_check?(from, to, player.color)
+      puts 'Move leaves King in Check!'
       return
     end
 
@@ -176,9 +176,6 @@ class Board
       return
     end
 
-    # Check if the move is legal (Check)
-    check_legality
-
     # En passant capture
     if piece.is_a?(Pawn) && to == @en_passant_target
       direction = piece.color == :white ? -1 : 1
@@ -199,18 +196,60 @@ class Board
       @en_passant_target = [middle_row, from[1]]
     end
 
+    # Special Cases: Promotion & Castling. Castling moves the Rook 'separately'
     handle_promotion(to)
-
-    # Handle moving the Rook 'Automatically'
     handle_castling_rook(from, to) if piece.is_a?(King) && (from[1] - to[1]).abs == 2
 
     # Mark that the piece has moved (for pawns, rooks, king)
     piece.moved = true if piece.respond_to?(:moved)
   end
 
-  def check_legality
+  # Check if a Move causes Check. Do the Move in a 'Temporary' Vacuum, then revert it if in_check = true
+  def move_causes_check?(from, to, color)
+    original_from = @grid[from[0]][from[1]]
+    original_to   = @grid[to[0]][to[1]]
+
+    # Make temporary move
+    @grid[to[0]][to[1]] = original_from
+    @grid[from[0]][from[1]] = nil
+
+    in_check = in_check?(color)
+
+    # Undo move
+    @grid[from[0]][from[1]] = original_from
+    @grid[to[0]][to[1]] = original_to
+
+    in_check
   end
 
+  # Find the King, find the Enemy, find its Pieces, find all possible Movements, return true if those include our king_pos
+  def in_check?(color)
+    king_pos = find_king(color)
+
+    enemy_color = color == :white ? :black : :white
+
+    @grid.each_with_index do |row, r|
+      row.each_with_index do |piece, c|
+        next if piece.nil? || piece.color != enemy_color
+
+        moves = piece.possible_moves(self, r, c)
+        return true if moves.include?(king_pos)
+      end
+    end
+
+    false
+  end
+
+  # Helper to Find the King
+  def find_king(color)
+    @grid.each_with_index do |row, r|
+      row.each_with_index do |piece, c|
+        return [r, c] if piece.is_a?(King) && piece.color == color
+      end
+    end
+  end
+
+  # Handles moving the Rook, kind of as a bonus to the King movement
   def handle_castling_rook(from, to)
     row = from[0]
 
@@ -227,7 +266,7 @@ class Board
     end
   end
 
-  # Promotion:
+  # Promotion Caller when reaching the final Square
   def handle_promotion(position)
     row, col = position
     piece = @grid[row][col]
@@ -242,6 +281,7 @@ class Board
     end
   end
 
+  # Promotion handler based on Input (Q, R, B, N)
   def promote_pawn(row, col, color)
     puts 'Promote pawn to (Q, R, B, N):'
     choice = gets.chomp.upcase
