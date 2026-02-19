@@ -1,24 +1,18 @@
-# Fix the Stack Overflow
-# in_check?
-# square_attacked?
-# Maybe consider getting rid of the first legal_moves_for check
+# Todos:
+# Clean up the Folder Structure
+# Refactor with Inheritance and DRY
 #
-# legal_moves_for
-
-# How to do it?
-# Calculate legal moves once
-# Include attacked squares by color
-
-# More Features:
-# Stop the game from breaking when typing 0-0
-# Add an AI that doesn't break; stack too deep error when dealing with check sometimes
+# Bugfixes:
+# Stop the game from breaking when typing 0-0 or 0-0-0
 # Add more Victory Conditions (3-Move Repetition, Insufficient Material, Agreed Draw)
 #
 # QOL Notation:
 # Short Notation
 # Allow '*' or 'x' for '-' IFF there's Piece to be captured
 # e8Q for Promotion
-# 0-0 and 0-0-0  for Castling
+# 0-0 and 0-0-0 for Castling
+#
+# Add an AI that can sort of play the game?
 
 class Game
   def initialize
@@ -33,6 +27,9 @@ class Game
   def play_turn
     player = @players[@current_player_index]
     @board.display
+
+    @white_attacked_squares = []
+    @black_attacked_squares = []
 
     # Compute legal moves AND populate attacked squares
     legal_moves = @board.legal_moves_for(player.color,
@@ -335,7 +332,7 @@ class Board
 
   # Get an array of all Legal Moves
   # Compute legal moves for `color`, while populating both white and black attacked squares
-  def legal_moves_for(color, white_attacks, black_attacks)
+  def legal_moves_for(color, white_attacked_squares, black_attacked_squares)
     legal_moves = []
 
     @grid.each_with_index do |row, r|
@@ -343,16 +340,21 @@ class Board
         next if piece.nil?
 
         # Compute all possible moves for this piece
-        moves = piece.possible_moves(self, r, c)
+        moves =
+          if piece.is_a?(King)
+            piece.possible_moves(self, r, c, white_attacked_squares, black_attacked_squares)
+          else
+            piece.possible_moves(self, r, c)
+          end
 
         # Update attacked squares, with special Pawn handling
         attacks = piece.is_a?(Pawn) ? piece.possible_attacks(self, r, c) : moves
 
         # Add squares to the correct attacked array
         if piece.color == :white
-          white_attacks.concat(attacks)
+          white_attacked_squares.concat(attacks)
         else
-          black_attacks.concat(attacks)
+          black_attacked_squares.concat(attacks)
         end
 
         # Only compute legal moves for the player whose turn it is
@@ -411,39 +413,102 @@ class Board
     original_from = @grid[from[0]][from[1]]
     original_to   = @grid[to[0]][to[1]]
 
-    # Make temporary move
-    @grid[to[0]][to[1]] = original_from
-    @grid[from[0]][from[1]] = nil
-
-    # Find King
-    king_pos = find_king(color)
-    enemy_color = color == :white ? :black : :white
+    # Detect castling: king moves 2 squares horizontally
+    king_castling = original_from.is_a?(King) && (to[1] - from[1]).abs == 2
 
     in_check = false
 
-    # Loop Across the Board
-    @grid.each_with_index do |row, r|
-      row.each_with_index do |piece, c|
-        next if piece.nil? || piece.color != enemy_color
+    if king_castling
+      row = from[0]
+      direction = to[1] > from[1] ? 1 : -1 # +1 kingside, -1 queenside
 
-        # Get all Attacks
-        attacks =
-          if piece.is_a?(Pawn)
-            piece.possible_attacks(self, r, c)
-          else
-            piece.possible_moves(self, r, c)
+      # Check intermediate square (square passed)
+      @grid[row][from[1] + direction] = original_from
+      @grid[from[0]][from[1]] = nil
+
+      king_pos = [row, from[1] + direction]
+      enemy_color = color == :white ? :black : :white
+
+      @grid.each_with_index do |r_row, r|
+        r_row.each_with_index do |piece, c|
+          next if piece.nil? || piece.color != enemy_color
+
+          attacks =
+            if piece.is_a?(Pawn)
+              piece.possible_attacks(self, r, c)
+            else
+              piece.possible_moves(self, r, c)
+            end
+
+          if attacks.include?(king_pos)
+            in_check = true
+            break
           end
-
-        # If we're Checked, Break and Undo
-        if attacks.include?(king_pos)
-          in_check = true
-          break
         end
+        break if in_check
       end
-      break if in_check
+
+      # Undo intermediate square
+      @grid[from[0]][from[1]] = original_from
+      @grid[row][from[1] + direction] = nil
+
+      return true if in_check
+
+      # Check final square
+      @grid[to[0]][to[1]] = original_from
+      @grid[from[0]][from[1]] = nil
+
+      king_pos = to
+      in_check = false
+
+      @grid.each_with_index do |r_row, r|
+        r_row.each_with_index do |piece, c|
+          next if piece.nil? || piece.color != enemy_color
+
+          attacks =
+            if piece.is_a?(Pawn)
+              piece.possible_attacks(self, r, c)
+            else
+              piece.possible_moves(self, r, c)
+            end
+
+          if attacks.include?(king_pos)
+            in_check = true
+            break
+          end
+        end
+        break if in_check
+      end
+
+    else
+      # Normal move
+      @grid[to[0]][to[1]] = original_from
+      @grid[from[0]][from[1]] = nil
+
+      king_pos = find_king(color)
+      enemy_color = color == :white ? :black : :white
+
+      @grid.each_with_index do |row, r|
+        row.each_with_index do |piece, c|
+          next if piece.nil? || piece.color != enemy_color
+
+          attacks =
+            if piece.is_a?(Pawn)
+              piece.possible_attacks(self, r, c)
+            else
+              piece.possible_moves(self, r, c)
+            end
+
+          if attacks.include?(king_pos)
+            in_check = true
+            break
+          end
+        end
+        break if in_check
+      end
     end
 
-    # Undo move
+    # Undo move (if final or normal)
     @grid[from[0]][from[1]] = original_from
     @grid[to[0]][to[1]] = original_to
 
@@ -869,7 +934,7 @@ class King
     'K'
   end
 
-  def possible_moves(board, row, col)
+  def possible_moves(board, row, col, white_attacked_squares = nil, black_attacked_squares = nil)
     moves = []
 
     # All Straights & Diagonals it can move towards
@@ -899,27 +964,23 @@ class King
 
     return moves if moved # (Can't Castle because Moved)
 
-    # Castling: King/Short and Queen/Long
+    # Kingside Castling
     moves << [row, col + 2] if can_castle_kingside?(board, row, col)
+
+    # Queenside Castling
     moves << [row, col - 2] if can_castle_queenside?(board, row, col)
 
     moves
   end
 
-  # Check if Square is occupied by a Rook.
-  # Check if Rook has .moved.
-  # Check if King has .moved
-  # Check if the King's Itinerary Squares are nil and not under Attack
-  # Check if the King's currently Check
+  # Check if Square is occupied by a Rook. Check if Rook has .moved. Check if King has .moved. Check if Itinerary is Clear.
+  # Check if the King's Itinerary Squares are nil and not under Attack. Check if the King's currently Check
   def can_castle_kingside?(board, row, col)
     rook = board.grid[row][7]
     return false unless rook.is_a?(Rook)
     return false if rook.moved
     return false if moved
     return false unless board.grid[row][5].nil? && board.grid[row][6].nil?
-
-    # return false if board.in_check?(color)
-    # return false if board.square_attacked?(row, col + 1, color)
 
     true
   end
