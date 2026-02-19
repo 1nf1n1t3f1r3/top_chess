@@ -1,10 +1,15 @@
 # Steps:
 # Stop the game from breaking when typing 0-0
-# Add Illegal Move Checker
+# Disallow Castling when Checked
 # Add Victory Condition Checker
+#
+# Bonus?:
+# Add Saving
+# Add AI?
 #
 # QOL Notation:
 # Short Notation
+# Allow '*' or 'x' for '-' IFF there's Piece to be captured
 # e8Q for Promotion
 # 0-0 and 0-0-0  for Castling
 
@@ -234,6 +239,22 @@ class Board
 
         moves = piece.possible_moves(self, r, c)
         return true if moves.include?(king_pos)
+      end
+    end
+
+    false
+  end
+
+  # Like In Check, but for any Square (Though any Square is only 4 possible Squares during Castling)
+  def square_attacked?(row, col, color)
+    enemy_color = color == :white ? :black : :white
+
+    @grid.each_with_index do |r_row, r|
+      r_row.each_with_index do |piece, c|
+        next if piece.nil? || piece.color != enemy_color
+
+        moves = piece.possible_moves(self, r, c)
+        return true if moves.include?([row, col])
       end
     end
 
@@ -642,23 +663,33 @@ class King
     moves
   end
 
-  # Check if square is occupied by a Rook first. Then check if that rook has .moved. Then check if the squares between them are empty
+  # Check if Square is occupied by a Rook.
+  # Check if Rook has .moved.
+  # Check if King has .moved
+  # Check if the King's Itinerary Squares are nil and not under Attack
+  # Check if the King's currently Check
   def can_castle_kingside?(board, row, col)
     rook = board.grid[row][7]
     return false unless rook.is_a?(Rook)
     return false if rook.moved
+    return false if moved
+    return false unless board.grid[row][5].nil? && board.grid[row][6].nil?
+    return false if board.in_check?(color)
+    return false if board.square_attacked?(row, col + 1, color)
 
-    board.grid[row][5].nil? && board.grid[row][6].nil?
+    true
   end
 
   def can_castle_queenside?(board, row, col)
     rook = board.grid[row][0]
     return false unless rook.is_a?(Rook)
     return false if rook.moved
+    return false if moved
+    return false unless board.grid[row][1].nil? && board.grid[row][2].nil? && board.grid[row][3].nil?
+    return false if board.in_check?(color)
+    return false if board.square_attacked?(row, col - 1, color)
 
-    board.grid[row][1].nil? &&
-      board.grid[row][2].nil? &&
-      board.grid[row][3].nil?
+    true
   end
 end
 
