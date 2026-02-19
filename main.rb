@@ -1,10 +1,8 @@
-# Steps:
+# More Features:
 # Stop the game from breaking when typing 0-0
-# Add Saving
-#
-# Add an AI that doesn't break. Stack too deep error when dealing with check sometimes.
-#
+# Add an AI that doesn't break; stack too deep error when dealing with check sometimes
 # Add more Victory Conditions (3-Move Repetition, Insufficient Material, Agreed Draw)
+#
 # QOL Notation:
 # Short Notation
 # Allow '*' or 'x' for '-' IFF there's Piece to be captured
@@ -36,7 +34,20 @@ class Game
     end
 
     # Play the Game
-    from, to = player.get_move(@board)
+    move = nil
+
+    loop do
+      move = player.get_move(@board)
+
+      if move == :save
+        handle_save
+        next # ask same player again
+      end
+
+      break
+    end
+
+    from, to = move
 
     # Get the Piece
     piece = @board.grid[from[0]][from[1]]
@@ -82,6 +93,20 @@ class Game
     end
   end
 
+  # Helper Function so we can Save Mid-Game
+  def handle_save
+    print 'Enter save name: '
+    filename = gets.chomp.strip
+
+    if filename.empty?
+      puts 'Invalid filename.'
+      return
+    end
+
+    save(filename)
+    puts 'Game saved successfully.'
+  end
+
   def save(filename)
     Dir.mkdir('saves') unless Dir.exist?('saves')
 
@@ -99,7 +124,13 @@ class Game
       game.replay_move(notation)
     end
 
+    # Restore move history with the moves from the save
+    game.instance_variable_set(:@move_history, data[:moves])
+
     game.instance_variable_set(:@current_player_index, data[:current_player_index])
+
+    # Overwrite autosave.yaml so it reflects this loaded game
+    File.write('autosave.yaml', data.to_yaml)
 
     game
   end
@@ -167,8 +198,11 @@ class Player
     return ai_move(board) unless @type == :human
 
     loop do
-      puts "#{@color.capitalize}'s move (e.g. Nb1-c3, e2-e4, 0-0, 0-0-0):"
+      puts "#{@color.capitalize}'s move (e.g. Nb1-c3, e2-e4, 0-0, 0-0-0). Alternatively, type ':save' to Save the Game. Alternatively, Alternatively, type CTRL+C, followed by " + 'load main.rb' + ' to go back to the start. Geez what a mouthful.'
       input = gets.chomp.strip
+
+      # Saving
+      return :save if input.downcase == ':save'
 
       # Handle castling
       if input == '0-0'
