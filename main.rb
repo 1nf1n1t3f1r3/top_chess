@@ -515,40 +515,6 @@ class Board
     in_check
   end
 
-  # # Find the King, find the Enemy, find its Pieces, find all possible Movements, return true if those include our king_pos
-  # def in_check?(color)
-  #   king_pos = find_king(color)
-
-  #   enemy_color = color == :white ? :black : :white
-
-  #   @grid.each_with_index do |row, r|
-  #     row.each_with_index do |piece, c|
-  #       next if piece.nil? || piece.color != enemy_color
-
-  #       moves = piece.possible_moves(self, r, c)
-  #       return true if moves.include?(king_pos)
-  #     end
-  #   end
-
-  #   false
-  # end
-
-  # # Like In Check, but for any Square (Though any Square is only 4 possible additional Squares during Castling)
-  # def square_attacked?(row, col, color)
-  #   enemy_color = color == :white ? :black : :white
-
-  #   @grid.each_with_index do |r_row, r|
-  #     r_row.each_with_index do |piece, c|
-  #       next if piece.nil? || piece.color != enemy_color
-
-  #       moves = piece.possible_moves(self, r, c)
-  #       return true if moves.include?([row, col])
-  #     end
-  #   end
-
-  #   false
-  # end
-
   # Helper to Find the King
   def find_king(color)
     @grid.each_with_index do |row, r|
